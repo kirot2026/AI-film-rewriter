@@ -21,7 +21,7 @@ Features
 How It Works
 
 The application follows this workflow:
-
+```text
 User Input
     ↓
 Python
@@ -35,7 +35,7 @@ JSON Response
 Python JSON Parsing
     ↓
 Formatted Output
-
+```
 The user provides:
 
 1. Movie or story name
