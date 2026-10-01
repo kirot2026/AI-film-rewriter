@@ -4,20 +4,21 @@ from openai import OpenAI
 import json
 load_dotenv()
 api_key = os.getenv("DASHSCOPE_API_KEY")
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-film_name=input("请输入要改编的电影名：")
-background=input("请输入故事背景：")
-ori_ending=input("请输入电影原始结局：")
-change_point=input("请输入剧情改变点：")
-ending_type=input("请输入希望的结局类型1.Happy Ending2.Bad Ending3.Open Ending4.Bittersweet Ending：")
+client = OpenAI(api_key=api_key,
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+def get_user_input():
+    film_name=input("请输入要改编的电影名：")
+    background=input("请输入故事背景：")
+    ori_ending=input("请输入电影原始结局：")
+    change_point=input("请输入剧情改变点：")
+    ending_type=input("请输入希望的结局类型1.Happy Ending2.Bad Ending3.Open Ending4.Bittersweet Ending：")
+    return film_name,background,ori_ending,change_point,ending_type
 
-response = client.chat.completions.create(
+def generate_ending(film_name,background,ori_ending,change_point,ending_type):
+    response = client.chat.completions.create(
     model="qwen-flash",  
-    messages=[
-        {"role": "user", "content": (f"""你是一名电影编剧。请根据以下信息从【剧情改变点】开始改变故事,重新设计故事结局.
+    messages=[{"role": "user", 
+               "content": (f"""你是一名电影编剧。请根据以下信息从【剧情改变点】开始改变故事,重新设计故事结局.
                                      【电影/故事名称】{film_name}
                                      【故事背景】{background}
                                      【原始结局】{ori_ending}
@@ -32,10 +33,20 @@ response = client.chat.completions.create(
                                      6. 保持人物行为符合人物设定
                                      7.new_ending五百字以内,每条key_changes不超过25字"""
                                      )}])
-text=response.choices[0].message.content
-print(text)
-result=json.loads(text)
-print(f"改编{result['ending_type']}:{result['new_ending']}")
-print("关键变更：")
-for changes in result["key_changes"]:
-    print(changes)
+    text=response.choices[0].message.content
+    result=json.loads(text)
+    return result
+
+def print_result(result):
+    print(f"改编{result['ending_type']}:{result['new_ending']}")
+    print("关键变更：")
+    for changes in result["key_changes"]:
+        print(changes)
+
+def main():
+    film_name,background,ori_ending,change_point,ending_type=get_user_input()
+    result=generate_ending(film_name,background,ori_ending,change_point,ending_type)
+    print_result(result)
+
+if __name__ == "__main__":
+    main()
