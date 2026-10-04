@@ -1,20 +1,25 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import json
 load_dotenv()
 api_key = os.getenv("DASHSCOPE_API_KEY")
+if not api_key:
+    raise ValueError("DASHSCOPE_API_KEY 未配置")
 client = OpenAI(api_key=api_key,
                 base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
-def get_user_input():
-    film_name=input("请输入要改编的电影名：")
-    background=input("请输入故事背景：")
-    ori_ending=input("请输入电影原始结局：")
-    change_point=input("请输入剧情改变点：")
-    ending_type=input("请输入希望的结局类型1.Happy Ending2.Bad Ending3.Open Ending4.Bittersweet Ending：")
-    return film_name,background,ori_ending,change_point,ending_type
 
-def generate_ending(film_name,background,ori_ending,change_point,ending_type):
+app = FastAPI()
+class RewriteRequest(BaseModel):
+    film_name: str
+    background:str
+    ori_ending:str
+    change_point: str
+    ending_type: str
+
+def generate_ending(film_name:str,background:str,ori_ending:str,change_point:str,ending_type:str):
     response = client.chat.completions.create(
     model="qwen-flash",  
     messages=[{"role": "user", 
@@ -34,19 +39,16 @@ def generate_ending(film_name,background,ori_ending,change_point,ending_type):
                                      7.new_ending五百字以内,每条key_changes不超过25字"""
                                      )}])
     text=response.choices[0].message.content
-    result=json.loads(text)
-    return result
+    try:
+        result=json.loads(text)
+        return result
+    except json.JSONDecodeError:
+        raise ValueError("模型返回的不是合法JSON")
 
-def print_result(result):
-    print(f"改编{result['ending_type']}:{result['new_ending']}")
-    print("关键变更：")
-    for changes in result["key_changes"]:
-        print(changes)
-
-def main():
-    film_name,background,ori_ending,change_point,ending_type=get_user_input()
-    result=generate_ending(film_name,background,ori_ending,change_point,ending_type)
-    print_result(result)
-
-if __name__ == "__main__":
-    main()
+@app.post("/rewriter")
+def rewrite(request: RewriteRequest):
+    try:
+        result = generate_ending(request.film_name,request.background,request.ori_ending,request.change_point,request.ending_type)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=500,detail=str(e))
